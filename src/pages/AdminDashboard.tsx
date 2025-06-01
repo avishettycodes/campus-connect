@@ -3,187 +3,184 @@ import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Typography,
-  Button,
-  TextField,
+  Container,
   Paper,
+  Grid,
+  Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  IconButton,
   Stack,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
   Snackbar,
   Alert,
-  Container,
-  IconButton,
-  Grid,
+  Card,
+  CardContent,
+  keyframes,
 } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import DeleteIcon from '@mui/icons-material/Delete';
+import LogoutIcon from '@mui/icons-material/Logout';
+import RestaurantIcon from '@mui/icons-material/Restaurant';
+import EventIcon from '@mui/icons-material/Event';
+import PeopleIcon from '@mui/icons-material/People';
 import AddIcon from '@mui/icons-material/Add';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import SchoolIcon from '@mui/icons-material/School';
 
-// Mock data for food items
-const mockFoodItems = [
-  {
-    id: 1,
-    name: 'Chocolate Croissant',
-    quantity: 8,
-    location: 'Mission Bakery',
-    expiryTime: '10:00 AM',
-    description: 'Freshly baked croissant with chocolate filling.',
-  },
-  {
-    id: 2,
-    name: 'Grilled Chicken Sandwich',
-    quantity: 5,
-    location: 'The Fire Grill',
-    expiryTime: '2:00 PM',
-    description: 'Grilled chicken breast with lettuce and tomato on a bun.',
-  },
-  {
-    id: 3,
-    name: 'Pepperoni Pizza Slice',
-    quantity: 10,
-    location: 'The Slice',
-    expiryTime: '1:30 PM',
-    description: 'Classic pepperoni pizza by the slice.',
-  },
-  {
-    id: 4,
-    name: 'Chicken Tikka Masala',
-    quantity: 6,
-    location: 'The Spice Market',
-    expiryTime: '2:30 PM',
-    description: 'Indian-style chicken in creamy tomato sauce.',
-  },
-  {
-    id: 5,
-    name: 'Korean BBQ Beef Bowl',
-    quantity: 7,
-    location: 'The Global Grill',
-    expiryTime: '3:00 PM',
-    description: 'Marinated beef with rice and veggies.',
-  },
-  {
-    id: 6,
-    name: 'Carne Asada Tacos',
-    quantity: 9,
-    location: 'La Parilla',
-    expiryTime: '2:00 PM',
-    description: 'Two tacos with grilled steak, onions, and cilantro.',
-  },
-  {
-    id: 7,
-    name: 'California Roll',
-    quantity: 12,
-    location: 'Sushi',
-    expiryTime: '1:00 PM',
-    description: 'Sushi roll with crab, avocado, and cucumber.',
-  },
-  {
-    id: 8,
-    name: "Chef's Special Pasta",
-    quantity: 4,
-    location: "The Chef's Table",
-    expiryTime: '2:30 PM',
-    description: 'Rotating pasta dish from the chef.',
-  },
-  {
-    id: 9,
-    name: 'Margherita Pizza',
-    quantity: 8,
-    location: 'Trattoria',
-    expiryTime: '1:30 PM',
-    description: 'Classic pizza with tomato, mozzarella, and basil.',
-  },
-  {
-    id: 10,
-    name: 'Vegan Buddha Bowl',
-    quantity: 6,
-    location: 'Simply Oasis',
-    expiryTime: '2:00 PM',
-    description: 'Quinoa, chickpeas, roasted veggies, and tahini.',
-  },
-  {
-    id: 11,
-    name: 'Acai Bowl',
-    quantity: 5,
-    location: 'Acai',
-    expiryTime: '11:00 AM',
-    description: 'Acai puree with granola, banana, and berries.',
-  },
-  {
-    id: 12,
-    name: 'Breakfast Burrito',
-    quantity: 7,
-    location: 'Sunstream Cafe',
-    expiryTime: '10:00 AM',
-    description: 'Eggs, cheese, and sausage in a flour tortilla.',
-  },
-  {
-    id: 13,
-    name: 'Chicken Caesar Wrap',
-    quantity: 6,
-    location: 'Cadence',
-    expiryTime: '1:00 PM',
-    description: 'Grilled chicken, romaine, and Caesar dressing.',
-  },
-  {
-    id: 14,
-    name: 'Fresh Fruit Cup',
-    quantity: 10,
-    location: 'Fresh Bytes',
-    expiryTime: '11:30 AM',
-    description: 'Seasonal fruit mix.',
-  },
+// Animation keyframes
+const fadeInUp = keyframes`
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+`;
+
+const scaleUp = keyframes`
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+`;
+
+const fadeOut = keyframes`
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+`;
+
+const slideOut = keyframes`
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+`;
+
+// Mock data for food listings
+const mockFoodListings = [
+  { id: 1, name: 'Chicken Sandwich', location: 'Mission Bakery', quantity: 15 },
+  { id: 2, name: 'Vegetable Pasta', location: 'The Fire Grill', quantity: 8 },
+  { id: 3, name: 'Caesar Salad', location: 'The Slice', quantity: 12 },
+  { id: 4, name: 'Fruit Bowl', location: 'Fresh Bytes', quantity: 10 },
+];
+
+// Mock data for event leftovers
+const mockEventLeftovers = [
+  { id: 1, eventName: 'Career Fair', foodType: 'Sandwiches', quantity: 25 },
+  { id: 2, eventName: 'Orientation', foodType: 'Pizza', quantity: 30 },
+  { id: 3, eventName: 'Club Meeting', foodType: 'Cookies', quantity: 50 },
+  { id: 4, eventName: 'Workshop', foodType: 'Fruit Platter', quantity: 15 },
+];
+
+// Mock data for student reservations
+const mockStudentReservations = [
+  { id: 1, studentName: 'John Smith', reservedItem: 'Chicken Sandwich', pickupTime: '12:30 PM' },
+  { id: 2, studentName: 'Emma Davis', reservedItem: 'Vegetable Pasta', pickupTime: '1:00 PM' },
+  { id: 3, studentName: 'Michael Brown', reservedItem: 'Caesar Salad', pickupTime: '12:45 PM' },
+  { id: 4, studentName: 'Sarah Wilson', reservedItem: 'Fruit Bowl', pickupTime: '1:15 PM' },
 ];
 
 function AdminDashboard() {
   const navigate = useNavigate();
-  const [foodItems, setFoodItems] = useState(mockFoodItems);
-  const [notification, setNotification] = useState({ open: false, message: '' });
-  const [formData, setFormData] = useState({
-    name: '',
-    quantity: '',
-    location: '',
-    expiryTime: '',
-    description: '',
+  const [openModal, setOpenModal] = useState(false);
+  const [modalType, setModalType] = useState<'add' | 'edit'>('add');
+  const [modalSection, setModalSection] = useState<'food' | 'event' | 'reservation'>('food');
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'info' | 'warning' | 'error';
+  }>({
+    open: false,
+    message: '',
+    severity: 'success',
   });
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value,
-    }));
+  // Calculate summary statistics
+  const summaryStats = {
+    totalFoodItems: mockFoodListings.length,
+    totalEvents: mockEventLeftovers.length,
+    totalReservations: mockStudentReservations.length,
+    totalFoodQuantity: mockFoodListings.reduce((sum, item) => sum + item.quantity, 0),
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const newItem = {
-      id: Date.now(),
-      ...formData,
-      quantity: parseInt(formData.quantity),
-    };
-    setFoodItems(prev => [...prev, newItem]);
-    setFormData({
-      name: '',
-      quantity: '',
-      location: '',
-      expiryTime: '',
-      description: '',
-    });
-    setNotification({
+  const handleLogout = () => {
+    setIsLoggingOut(true);
+    // Simulate logout animation and redirect
+    setTimeout(() => {
+      navigate('/');
+    }, 1500);
+  };
+
+  // Modal handlers
+  const handleOpenModal = (type: 'add' | 'edit', section: 'food' | 'event' | 'reservation', id?: number) => {
+    setModalType(type);
+    setModalSection(section);
+    setSelectedId(id || null);
+    setOpenModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setOpenModal(false);
+    setSelectedId(null);
+  };
+
+  const handleSave = () => {
+    // Mock save functionality
+    const action = modalType === 'add' ? 'Added' : 'Updated';
+    const section = modalSection === 'food' ? 'Food Item' :
+                   modalSection === 'event' ? 'Event Leftover' : 'Reservation';
+    showSnackbar(`${action} ${section} successfully!`, 'success');
+    handleCloseModal();
+  };
+
+  const handleDelete = (type: string, id: number) => {
+    showSnackbar(`Deleted ${type} successfully!`, 'success');
+  };
+
+  const showSnackbar = (message: string, severity: 'success' | 'info' | 'warning' | 'error') => {
+    setSnackbar({
       open: true,
-      message: 'Food item added successfully!',
+      message,
+      severity,
     });
   };
 
-  const handleDelete = (id: number) => {
-    setFoodItems(prev => prev.filter(item => item.id !== id));
-    setNotification({
-      open: true,
-      message: 'Food item deleted successfully!',
-    });
+  const handleCloseSnackbar = () => {
+    setSnackbar(prev => ({ ...prev, open: false }));
   };
 
-  const handleCloseNotification = () => {
-    setNotification({ ...notification, open: false });
+  // Get modal title based on type and section
+  const getModalTitle = () => {
+    const action = modalType === 'add' ? 'Add New' : 'Edit';
+    const section = modalSection === 'food' ? 'Food Item' :
+                   modalSection === 'event' ? 'Event Leftover' : 'Reservation';
+    return `${action} ${section}`;
   };
 
   return (
@@ -193,9 +190,11 @@ function AdminDashboard() {
         bgcolor: 'background.default',
         pt: 2,
         pb: 4,
+        animation: isLoggingOut ? `${fadeOut} 1s ease-out forwards` : 'none',
       }}
     >
-      <Container maxWidth="sm">
+      <Container maxWidth="lg">
+        {/* Header Section with Animation */}
         <Paper
           elevation={0}
           sx={{
@@ -209,222 +208,517 @@ function AdminDashboard() {
             backdropFilter: 'blur(8px)',
             borderBottom: '1px solid',
             borderColor: 'divider',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            animation: isLoggingOut ? `${slideOut} 1s ease-out forwards` : `${fadeInUp} 0.6s ease-out`,
           }}
         >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Button
-              startIcon={<ArrowBackIcon />}
-              onClick={() => navigate('/')}
-              sx={{
-                color: 'text.primary',
-                '&:hover': {
-                  bgcolor: 'action.hover',
-                },
-              }}
-            >
-              Back
-            </Button>
+          {/* Logo and App Name Container */}
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              flex: 1,
+              justifyContent: 'center', // Center the logo and text
+            }}
+          >
+            <RestaurantIcon 
+              sx={{ 
+                fontSize: 32,
+                color: 'primary.main',
+              }} 
+            />
             <Typography
               variant="h5"
               component="h1"
               sx={{
                 fontWeight: 600,
-                flex: 1,
-                textAlign: 'center',
-                mr: 4,
+                color: 'primary.main',
+                letterSpacing: '0.5px',
               }}
             >
-              Admin Dashboard
+              CampusConnect
             </Typography>
           </Box>
+
+          {/* Logout Button - Positioned absolutely to maintain layout */}
+          <Button
+            startIcon={<LogoutIcon />}
+            onClick={handleLogout}
+            color="primary"
+            variant="outlined"
+            sx={{
+              minWidth: { xs: 'auto', sm: '120px' },
+              px: { xs: 1, sm: 2 },
+              position: 'absolute',
+              right: 16,
+            }}
+            disabled={isLoggingOut}
+          >
+            <Box sx={{ display: { xs: 'none', sm: 'block' } }}>Logout</Box>
+          </Button>
         </Paper>
 
-        <Paper
-          component="form"
-          onSubmit={handleSubmit}
-          sx={{
-            p: 3,
-            mb: 4,
-            borderRadius: 3,
-            animation: 'fadeIn 0.5s ease-out',
+        {/* Summary Statistics with Staggered Animation */}
+        <Grid 
+          container 
+          spacing={2} 
+          sx={{ 
+            mb: 3,
+            '& > .MuiGrid-item': {
+              animation: `${fadeInUp} 0.5s ease-out both`,
+            },
+            '& > .MuiGrid-item:nth-of-type(1)': { animationDelay: '0.1s' },
+            '& > .MuiGrid-item:nth-of-type(2)': { animationDelay: '0.2s' },
+            '& > .MuiGrid-item:nth-of-type(3)': { animationDelay: '0.3s' },
+            '& > .MuiGrid-item:nth-of-type(4)': { animationDelay: '0.4s' },
           }}
         >
-          <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>
-            Add New Food Listing
-          </Typography>
-          <Stack spacing={2}>
-            <Grid component="div" item xs={12} sm={6}>
-              <TextField
-                required
-                fullWidth
-                label="Food Name"
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                variant="outlined"
-              />
-            </Grid>
-            <Grid component="div" item xs={12} sm={6}>
-              <TextField
-                required
-                fullWidth
-                label="Quantity"
-                name="quantity"
-                type="number"
-                value={formData.quantity}
-                onChange={handleInputChange}
-                variant="outlined"
-              />
-            </Grid>
-            <Grid component="div" item xs={12} sm={6}>
-              <TextField
-                required
-                fullWidth
-                label="Location"
-                name="location"
-                value={formData.location}
-                onChange={handleInputChange}
-                variant="outlined"
-              />
-            </Grid>
-            <Grid component="div" item xs={12} sm={6}>
-              <TextField
-                required
-                fullWidth
-                label="Expiry Time"
-                name="expiryTime"
-                value={formData.expiryTime}
-                onChange={handleInputChange}
-                variant="outlined"
-                placeholder="e.g., 2 hours"
-              />
-            </Grid>
-            <Grid component="div" item xs={12}>
-              <TextField
-                required
-                fullWidth
-                label="Description"
-                name="description"
-                value={formData.description}
-                onChange={handleInputChange}
-                variant="outlined"
-                multiline
-                rows={3}
-              />
-            </Grid>
-            <Grid component="div" item xs={12}>
-              <Button
-                type="submit"
-                variant="contained"
-                color="primary"
-                startIcon={<AddIcon />}
-                sx={{
-                  py: 1.5,
-                  fontSize: '1rem',
-                  fontWeight: 500,
+          {[
+            { icon: <RestaurantIcon color="primary" />, value: summaryStats.totalFoodItems, label: 'Food Items' },
+            { icon: <EventIcon color="primary" />, value: summaryStats.totalEvents, label: 'Events' },
+            { icon: <PeopleIcon color="primary" />, value: summaryStats.totalReservations, label: 'Reservations' },
+            { icon: <RestaurantIcon color="primary" />, value: summaryStats.totalFoodQuantity, label: 'Total Quantity' },
+          ].map((stat, index) => (
+            <Grid item xs={12} sm={6} md={3} key={index}>
+              <Card 
+                elevation={2} 
+                sx={{ 
+                  borderRadius: 2,
+                  transition: 'all 0.3s ease',
                   '&:hover': {
-                    transform: 'translateY(-1px)',
+                    transform: 'translateY(-4px)',
+                    boxShadow: 4,
                   },
                 }}
               >
-                Add Food Item
-              </Button>
+                <CardContent>
+                  <Stack direction="row" alignItems="center" spacing={1}>
+                    {stat.icon}
+                    <Box>
+                      <Typography variant="h6">{stat.value}</Typography>
+                      <Typography variant="body2" color="text.secondary">{stat.label}</Typography>
+                    </Box>
+                  </Stack>
+                </CardContent>
+              </Card>
             </Grid>
-          </Stack>
-        </Paper>
+          ))}
+        </Grid>
 
-        <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-          Current Listings
-        </Typography>
-
-        <Stack spacing={3}>
-          {foodItems.map((item, index) => (
+        {/* Feature Sections with Staggered Animation */}
+        <Grid 
+          container 
+          spacing={3}
+          sx={{
+            '& > .MuiGrid-item': {
+              animation: `${scaleUp} 0.5s ease-out both`,
+            },
+            '& > .MuiGrid-item:nth-of-type(1)': { animationDelay: '0.2s' },
+            '& > .MuiGrid-item:nth-of-type(2)': { animationDelay: '0.3s' },
+            '& > .MuiGrid-item:nth-of-type(3)': { animationDelay: '0.4s' },
+          }}
+        >
+          {/* Food Listings Section */}
+          <Grid item xs={12} md={4}>
             <Paper
-              key={item.id}
+              elevation={3}
               sx={{
                 p: 3,
+                height: '100%',
                 borderRadius: 3,
-                animation: `fadeIn 0.5s ease-out ${index * 0.1}s both`,
-                '@keyframes fadeIn': {
-                  '0%': {
-                    opacity: 0,
-                    transform: 'translateY(20px)',
-                  },
-                  '100%': {
-                    opacity: 1,
-                    transform: 'translateY(0)',
-                  },
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                textAlign: 'center',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  transform: 'translateY(-4px)',
+                  boxShadow: 6,
                 },
               }}
             >
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                <Typography variant="h6" color="primary" sx={{ fontWeight: 600 }}>
-                  {item.name}
-                </Typography>
-                <IconButton
-                  onClick={() => handleDelete(item.id)}
-                  color="error"
-                  sx={{
-                    '&:hover': {
-                      bgcolor: 'error.light',
-                      color: 'white',
-                    },
-                  }}
-                >
-                  <DeleteIcon />
-                </IconButton>
-              </Box>
-              <Stack spacing={1.5}>
-                <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                  Quantity: {item.quantity}
-                </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                  Location: {item.location}
-                </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                  Expires: {item.expiryTime}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {item.description}
-                </Typography>
-              </Stack>
-            </Paper>
-          ))}
-        </Stack>
+              <RestaurantIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
+              <Typography variant="h6" gutterBottom>
+                Manage Food Listings
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Add, edit, or remove available food items.
+              </Typography>
+              
+              {/* Add New Button */}
+              <Button
+                startIcon={<AddIcon />}
+                variant="contained"
+                color="primary"
+                fullWidth
+                onClick={() => handleOpenModal('add', 'food')}
+                sx={{ 
+                  mb: 2,
+                  py: 1.5,
+                  minHeight: '48px',
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    transform: 'scale(1.02)',
+                    boxShadow: 3,
+                  },
+                }}
+              >
+                Add New Food Item
+              </Button>
 
-        {foodItems.length === 0 && (
-          <Box
-            sx={{
-              textAlign: 'center',
-              py: 8,
-              animation: 'fadeIn 0.5s ease-out',
+              {/* Food Listings Table */}
+              <TableContainer sx={{ mt: 2, mb: 2, width: '100%' }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Item Name</TableCell>
+                      <TableCell>Location</TableCell>
+                      <TableCell align="right">Quantity</TableCell>
+                      <TableCell align="right">Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {mockFoodListings.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell>{item.name}</TableCell>
+                        <TableCell>{item.location}</TableCell>
+                        <TableCell align="right">{item.quantity}</TableCell>
+                        <TableCell align="right">
+                          <Stack direction="row" spacing={1} justifyContent="flex-end">
+                            <IconButton
+                              size="small"
+                              color="primary"
+                              onClick={() => handleOpenModal('edit', 'food', item.id)}
+                            >
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => handleDelete('food item', item.id)}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Stack>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+
+              <Button
+                variant="outlined"
+                color="primary"
+                fullWidth
+                sx={{ 
+                  mt: 'auto',
+                  py: 1.5,
+                  minHeight: '48px',
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    transform: 'scale(1.02)',
+                    boxShadow: 2,
+                  },
+                }}
+              >
+                Manage Food
+              </Button>
+            </Paper>
+          </Grid>
+
+          {/* Event Leftovers Section */}
+          <Grid item xs={12} md={4}>
+            <Paper
+              elevation={3}
+              sx={{
+                p: 3,
+                height: '100%',
+                borderRadius: 3,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                textAlign: 'center',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  transform: 'translateY(-4px)',
+                  boxShadow: 6,
+                },
+              }}
+            >
+              <EventIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
+              <Typography variant="h6" gutterBottom>
+                Manage Event Leftovers
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Track and manage leftover food from events.
+              </Typography>
+
+              {/* Add New Button */}
+              <Button
+                startIcon={<AddIcon />}
+                variant="contained"
+                color="primary"
+                fullWidth
+                onClick={() => handleOpenModal('add', 'event')}
+                sx={{ 
+                  mb: 2,
+                  py: 1.5,
+                  minHeight: '48px',
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    transform: 'scale(1.02)',
+                    boxShadow: 3,
+                  },
+                }}
+              >
+                Add New Leftover
+              </Button>
+
+              {/* Event Leftovers Table */}
+              <TableContainer sx={{ mt: 2, mb: 2, width: '100%' }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Event Name</TableCell>
+                      <TableCell>Food Type</TableCell>
+                      <TableCell align="right">Quantity</TableCell>
+                      <TableCell align="right">Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {mockEventLeftovers.map((event) => (
+                      <TableRow key={event.id}>
+                        <TableCell>{event.eventName}</TableCell>
+                        <TableCell>{event.foodType}</TableCell>
+                        <TableCell align="right">{event.quantity}</TableCell>
+                        <TableCell align="right">
+                          <Stack direction="row" spacing={1} justifyContent="flex-end">
+                            <IconButton
+                              size="small"
+                              color="primary"
+                              onClick={() => handleOpenModal('edit', 'event', event.id)}
+                            >
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => handleDelete('event leftover', event.id)}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Stack>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+
+              <Button
+                variant="outlined"
+                color="primary"
+                fullWidth
+                sx={{ 
+                  mt: 'auto',
+                  py: 1.5,
+                  minHeight: '48px',
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    transform: 'scale(1.02)',
+                    boxShadow: 2,
+                  },
+                }}
+              >
+                Manage Leftovers
+              </Button>
+            </Paper>
+          </Grid>
+
+          {/* Reservations Section */}
+          <Grid item xs={12} md={4}>
+            <Paper
+              elevation={3}
+              sx={{
+                p: 3,
+                height: '100%',
+                borderRadius: 3,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                textAlign: 'center',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  transform: 'translateY(-4px)',
+                  boxShadow: 6,
+                },
+              }}
+            >
+              <PeopleIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
+              <Typography variant="h6" gutterBottom>
+                View Student Reservations
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Monitor and manage student food reservations.
+              </Typography>
+
+              {/* Add New Button */}
+              <Button
+                startIcon={<AddIcon />}
+                variant="contained"
+                color="primary"
+                fullWidth
+                onClick={() => handleOpenModal('add', 'reservation')}
+                sx={{ 
+                  mb: 2,
+                  py: 1.5,
+                  minHeight: '48px',
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    transform: 'scale(1.02)',
+                    boxShadow: 3,
+                  },
+                }}
+              >
+                Add New Reservation
+              </Button>
+
+              {/* Student Reservations Table */}
+              <TableContainer sx={{ mt: 2, mb: 2, width: '100%' }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Student Name</TableCell>
+                      <TableCell>Reserved Item</TableCell>
+                      <TableCell align="right">Pickup Time</TableCell>
+                      <TableCell align="right">Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {mockStudentReservations.map((reservation) => (
+                      <TableRow key={reservation.id}>
+                        <TableCell>{reservation.studentName}</TableCell>
+                        <TableCell>{reservation.reservedItem}</TableCell>
+                        <TableCell align="right">{reservation.pickupTime}</TableCell>
+                        <TableCell align="right">
+                          <Stack direction="row" spacing={1} justifyContent="flex-end">
+                            <IconButton
+                              size="small"
+                              color="primary"
+                              onClick={() => handleOpenModal('edit', 'reservation', reservation.id)}
+                            >
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => handleDelete('reservation', reservation.id)}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Stack>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+
+              <Button
+                variant="outlined"
+                color="primary"
+                fullWidth
+                sx={{ 
+                  mt: 'auto',
+                  py: 1.5,
+                  minHeight: '48px',
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    transform: 'scale(1.02)',
+                    boxShadow: 2,
+                  },
+                }}
+              >
+                View Reservations
+              </Button>
+            </Paper>
+          </Grid>
+        </Grid>
+
+        {/* Modal with Animation */}
+        <Dialog
+          open={openModal}
+          onClose={handleCloseModal}
+          maxWidth="sm"
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: 3,
+              animation: `${scaleUp} 0.3s ease-out`,
+            },
+          }}
+        >
+          <DialogTitle>{getModalTitle()}</DialogTitle>
+          <DialogContent>
+            <Box sx={{ pt: 2 }}>
+              <TextField
+                fullWidth
+                label="Name"
+                variant="outlined"
+                sx={{ mb: 2 }}
+              />
+              <TextField
+                fullWidth
+                label={modalSection === 'food' ? 'Location' : 
+                       modalSection === 'event' ? 'Food Type' : 'Reserved Item'}
+                variant="outlined"
+                sx={{ mb: 2 }}
+              />
+              <TextField
+                fullWidth
+                label={modalSection === 'reservation' ? 'Pickup Time' : 'Quantity'}
+                variant="outlined"
+                type={modalSection === 'reservation' ? 'text' : 'number'}
+              />
+            </Box>
+          </DialogContent>
+          <DialogActions sx={{ p: 2 }}>
+            <Button onClick={handleCloseModal} color="inherit">
+              Cancel
+            </Button>
+            <Button onClick={handleSave} variant="contained" color="primary">
+              Save
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Snackbar with Animation */}
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={3000}
+          onClose={handleCloseSnackbar}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+          sx={{
+            animation: `${fadeInUp} 0.3s ease-out`,
+          }}
+        >
+          <Alert
+            onClose={handleCloseSnackbar}
+            severity={snackbar.severity}
+            variant="filled"
+            sx={{ 
+              width: '100%',
+              borderRadius: 2,
             }}
           >
-            <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
-              No food items listed
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Add new food items using the form above
-            </Typography>
-          </Box>
-        )}
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
       </Container>
-
-      <Snackbar
-        open={notification.open}
-        autoHideDuration={3000}
-        onClose={handleCloseNotification}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert
-          onClose={handleCloseNotification}
-          severity="success"
-          variant="filled"
-          sx={{ width: '100%' }}
-        >
-          {notification.message}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 }

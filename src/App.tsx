@@ -10,6 +10,7 @@ import Welcome from './pages/Welcome';
 import ReservationSummary from './pages/ReservationSummary';
 import Events from './pages/Events';
 import AdminLogin from './pages/AdminLogin';
+import YourReservations from './pages/YourReservations';
 
 // Context for selected school
 export const SelectedSchoolContext = createContext({
@@ -72,9 +73,10 @@ const App: React.FC = () => {
               )
             } />
             <Route path="/admin-login" element={<AdminLogin />} />
-            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin-dashboard" element={<AdminDashboard />} />
             <Route path="/reservations" element={<ReservationSummary />} />
             <Route path="/events" element={<Events />} />
+            <Route path="/your-reservations" element={<YourReservations />} />
           </Routes>
         </Router>
       </ThemeProvider>

@@ -9,9 +9,48 @@ import {
   Container,
   Autocomplete,
   AutocompleteRenderInputParams,
+  FormControlLabel,
+  Checkbox,
+  CircularProgress,
+  keyframes,
+  IconButton,
+  Stack,
 } from '@mui/material';
 import LocalDiningIcon from '@mui/icons-material/LocalDining';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { SelectedSchoolContext } from '../App';
+
+// Animation keyframes
+const fadeOut = keyframes`
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+`;
+
+const spin = keyframes`
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+`;
+
+const slideUp = keyframes`
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+`;
 
 // List of major US colleges and universities
 const schools = [
@@ -144,19 +183,33 @@ function StudentLogin() {
   const navigate = useNavigate();
   const { setSelectedSchool } = useContext(SelectedSchoolContext);
   const [formData, setFormData] = useState({
-    fafsaId: '',
     email: '',
     name: '',
     password: '',
     school: '',
+    isLowIncome: false,
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState({
+    school: false,
+    email: false,
+    name: false,
+    password: false,
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
+    const { name, value, checked } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: name === 'isLowIncome' ? checked : value
     }));
+    // Clear error when user starts typing
+    if (name !== 'isLowIncome') {
+      setErrors(prev => ({
+        ...prev,
+        [name]: false
+      }));
+    }
   };
 
   const handleSchoolChange = (_: any, newValue: string | null) => {
@@ -164,41 +217,98 @@ function StudentLogin() {
       ...prev,
       school: newValue || ''
     }));
+    // Clear school error when selection changes
+    setErrors(prev => ({
+      ...prev,
+      school: false
+    }));
+  };
+
+  const validateForm = () => {
+    const newErrors = {
+      school: !formData.school,
+      email: !formData.email,
+      name: !formData.name,
+      password: !formData.password,
+    };
+    setErrors(newErrors);
+    return !Object.values(newErrors).some(error => error);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Store selected school in localStorage and context for theme switching
-    localStorage.setItem('selectedSchool', formData.school);
-    setSelectedSchool(formData.school);
-    // Navigate to welcome screen instead of dashboard
-    navigate('/welcome');
+    if (validateForm()) {
+      setIsLoading(true);
+      // Store selected school in localStorage and context for theme switching
+      localStorage.setItem('selectedSchool', formData.school);
+      setSelectedSchool(formData.school);
+      
+      // Store user's full name in localStorage
+      localStorage.setItem('userFullName', formData.name);
+      
+      // Simulate loading and animate transition
+      setTimeout(() => {
+        navigate('/welcome');
+      }, 1500);
+    }
+  };
+
+  const handleBack = () => {
+    navigate('/');
   };
 
   return (
-    <Container maxWidth="sm" sx={{ px: { xs: 1, sm: 0 } }}>
-      <Box
+    <Box
+      sx={{
+        minHeight: '100vh',
+        bgcolor: 'background.default',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        p: 2,
+        position: 'relative',
+      }}
+    >
+      {/* Back Button */}
+      <IconButton
+        onClick={handleBack}
         sx={{
-          minHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          pt: { xs: 2, sm: 4 },
-          pb: { xs: 2, sm: 4 },
+          position: 'absolute',
+          left: { xs: 16, sm: 24 },
+          top: { xs: 16, sm: 24 },
+          bgcolor: 'primary.main',
+          color: 'white',
+          '&:hover': {
+            bgcolor: 'primary.dark',
+          },
+          width: { xs: 36, sm: 40 },
+          height: { xs: 36, sm: 40 },
+          boxShadow: 2,
+          transition: 'all 0.2s ease-in-out',
         }}
+        aria-label="Go back to home page"
       >
+        <ArrowBackIcon />
+      </IconButton>
+
+      <Container maxWidth="sm">
         <Box
           sx={{
             display: 'flex',
+            flexDirection: 'column',
             alignItems: 'center',
-            justifyContent: 'center',
-            mb: { xs: 2, sm: 4 },
+            mb: 3,
+            animation: `${slideUp} 0.5s ease-out`,
           }}
         >
           <LocalDiningIcon
             sx={{
-              fontSize: { xs: '2.5rem', sm: '4rem' },
+              fontSize: { xs: '2rem', sm: '2.5rem' },
               color: 'primary.main',
+              animation: isLoading ? `${spin} 1s linear infinite` : 'none',
+              mb: 2,
+              transition: 'all 0.3s ease-in-out',
             }}
           />
         </Box>
@@ -206,111 +316,146 @@ function StudentLogin() {
         <Paper
           elevation={3}
           sx={{
-            p: { xs: 2, sm: 4 },
-            width: '100%',
-            maxWidth: 400,
-            textAlign: 'center',
-            mx: 'auto',
-            borderRadius: { xs: 2, sm: 4 },
+            p: 4,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            borderRadius: 3,
+            animation: isLoading ? `${fadeOut} 0.5s ease-out forwards` : `${slideUp} 0.5s ease-out`,
+            transition: 'all 0.3s ease-in-out',
           }}
         >
           <Typography
             variant="h4"
             component="h1"
             gutterBottom
+            align="center"
             sx={{
+              mb: 4,
               color: 'primary.main',
               fontWeight: 600,
-              fontSize: { xs: '1.5rem', sm: '2.25rem' },
-              mb: { xs: 2, sm: 3 },
+              animation: isLoading ? `${spin} 1s linear infinite` : 'none',
             }}
           >
             Student Login
           </Typography>
 
-          <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <TextField
-              fullWidth
-              label="FAFSA ID"
-              name="fafsaId"
-              value={formData.fafsaId}
-              onChange={handleChange}
-              margin="normal"
-              required
-              placeholder="Enter your FAFSA ID"
-              sx={{ mb: 0 }}
-            />
-            <Autocomplete
-              options={schools}
-              value={formData.school}
-              onChange={handleSchoolChange}
-              renderInput={(params: AutocompleteRenderInputParams) => (
-                <TextField
-                  {...params}
-                  fullWidth
-                  label="School"
-                  margin="normal"
-                  required
-                  placeholder="Select your school"
-                />
-              )}
-              sx={{ mt: 0 }}
-            />
-            <TextField
-              fullWidth
-              label="School Email"
-              name="email"
-              type="email"
-              value={formData.email}
-              onChange={handleChange}
-              margin="normal"
-              required
-              placeholder="Enter your school email"
-              sx={{ mb: 0 }}
-            />
-            <TextField
-              fullWidth
-              label="Full Name"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              margin="normal"
-              required
-              placeholder="Enter your full name"
-              sx={{ mb: 0 }}
-            />
-            <TextField
-              fullWidth
-              label="Password"
-              name="password"
-              type="password"
-              value={formData.password}
-              onChange={handleChange}
-              margin="normal"
-              required
-              placeholder="Enter your password"
-              sx={{ mb: 0 }}
-            />
-            <Button
-              type="submit"
-              variant="contained"
-              color="primary"
-              fullWidth
-              size="large"
-              sx={{
-                mt: 2,
-                py: 1.5,
-                fontSize: { xs: '1rem', sm: '1.1rem' },
-                borderRadius: 2,
-                boxShadow: 2,
-              }}
-            >
-              Login
-            </Button>
+          <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
+            <Stack spacing={2}>
+              <Autocomplete
+                options={schools}
+                value={formData.school}
+                onChange={handleSchoolChange}
+                renderInput={(params: AutocompleteRenderInputParams) => (
+                  <TextField
+                    {...params}
+                    fullWidth
+                    label="School"
+                    required
+                    placeholder="Select your school"
+                    error={errors.school}
+                    helperText={errors.school ? "This field is required" : ""}
+                  />
+                )}
+              />
+              <TextField
+                fullWidth
+                label="School Email"
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleChange}
+                required
+                placeholder="Enter your school email"
+                helperText={errors.email ? "This field is required" : "Use your official school email (e.g., johndoe@university.edu)"}
+                error={errors.email}
+              />
+              <TextField
+                fullWidth
+                label="Full Name"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                required
+                placeholder="Enter your full name"
+                error={errors.name}
+                helperText={errors.name ? "This field is required" : ""}
+              />
+              <TextField
+                fullWidth
+                label="Password"
+                name="password"
+                type="password"
+                value={formData.password}
+                onChange={handleChange}
+                required
+                placeholder="Enter your password"
+                error={errors.password}
+                helperText={errors.password ? "This field is required" : ""}
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    name="isLowIncome"
+                    checked={formData.isLowIncome}
+                    onChange={handleChange}
+                    color="primary"
+                  />
+                }
+                label="I confirm I am a low-income student as verified by the school's financial aid office."
+                sx={{ 
+                  mt: 1,
+                  textAlign: 'left',
+                  alignItems: 'flex-start',
+                  '& .MuiFormControlLabel-label': {
+                    marginTop: '2px',
+                    marginLeft: '8px',
+                  }
+                }}
+              />
+              <Button
+                type="submit"
+                variant="contained"
+                color="primary"
+                fullWidth
+                size="large"
+                onClick={handleSubmit}
+                disabled={isLoading}
+                sx={{ 
+                  mt: 2,
+                  py: 1.5,
+                  position: 'relative',
+                  '&:hover': {
+                    backgroundColor: 'primary.dark',
+                    transform: 'translateY(-1px)',
+                  },
+                  transition: 'all 0.2s ease-in-out',
+                }}
+              >
+                {isLoading ? (
+                  <>
+                    <CircularProgress
+                      size={24}
+                      sx={{
+                        color: 'white',
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        marginTop: '-12px',
+                        marginLeft: '-12px',
+                      }}
+                    />
+                    <span style={{ visibility: 'hidden' }}>Login</span>
+                  </>
+                ) : (
+                  'Login'
+                )}
+              </Button>
+            </Stack>
           </Box>
         </Paper>
-      </Box>
-    </Container>
+      </Container>
+    </Box>
   );
 }
 
