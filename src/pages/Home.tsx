@@ -22,7 +22,7 @@ function Home() {
         alignItems: 'center',
         justifyContent: 'center',
         p: 2,
-        background: 'linear-gradient(135deg, #f5f7fa 0%, #e4e8eb 100%)',
+        bgcolor: 'background.default',
         position: 'relative',
         overflow: 'hidden',
         '&::before': {

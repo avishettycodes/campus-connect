@@ -1,3 +1,14 @@
+/**
+ * StudentDashboard.tsx
+ * Main dashboard for students to view and manage food reservations
+ * 
+ * Changes made:
+ * - Integrated with ReservationService
+ * - Improved error handling
+ * - Enhanced user session validation
+ * - Added proper state management
+ */
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -26,6 +37,11 @@ import {
   Avatar,
   Menu,
   MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  DialogContentText,
 } from '@mui/material';
 import {
   Notifications as NotificationsIcon,
@@ -39,7 +55,12 @@ import {
   AccessTime as AccessTimeIcon,
   KeyboardArrowDown as KeyboardArrowDownIcon,
   Event as EventIcon,
+  AccountCircle as AccountCircleIcon,
+  ShoppingCart as ShoppingCartIcon,
 } from '@mui/icons-material';
+import { useAuth } from '../contexts/AuthContext';
+import { reservationService } from '../services/ReservationService';
+import { useReservations, type Reservation } from '../contexts/ReservationContext';
 
 // Import local food images
 import pastriesImage from '../assets/food/pastries.jpg';
@@ -180,10 +201,10 @@ interface FoodItem {
   id: string;
   title: string;
   description: string;
-  locationId: string;  // This will match with Location id
+  locationId: string;
   pickupTime: string;
-  availableQuantity: number;
-  quantity: number;
+  availableCount: number;
+  totalCount: number;  // Added to track original quantity
   image: string;
   type: 'cafe' | 'event';
   source: string;
@@ -367,8 +388,8 @@ const CAFE_ITEMS: FoodItem[] = [
     description: 'Freshly baked pizza slice with pepperoni and cheese',
     locationId: 'benson-slice',
     pickupTime: '12:00 PM - 1:00 PM',
-    availableQuantity: 3,
-    quantity: 3,
+    availableCount: 3,
+    totalCount: 3,
     image: pizzaImage,
     type: 'cafe',
     source: 'The Slice',
@@ -380,8 +401,8 @@ const CAFE_ITEMS: FoodItem[] = [
     description: 'Grilled chicken breast with lettuce, tomato, and special sauce',
     locationId: 'benson-grill',
     pickupTime: '11:30 AM - 12:30 PM',
-    availableQuantity: 2,
-    quantity: 2,
+    availableCount: 2,
+    totalCount: 2,
     image: sandwichImage,
     type: 'cafe',
     source: 'The Global Grill',
@@ -393,8 +414,8 @@ const CAFE_ITEMS: FoodItem[] = [
     description: 'Fresh vegetables and hummus in a whole wheat wrap',
     locationId: 'benson-oasis',
     pickupTime: '1:00 PM - 2:00 PM',
-    availableQuantity: 4,
-    quantity: 4,
+    availableCount: 4,
+    totalCount: 4,
     image: wrapImage,
     type: 'cafe',
     source: 'Simply Oasis',
@@ -406,8 +427,8 @@ const CAFE_ITEMS: FoodItem[] = [
     description: 'Freshly brewed coffee with optional cream and sugar',
     locationId: 'learning-sunstream',
     pickupTime: '9:00 AM - 10:00 AM',
-    availableQuantity: 5,
-    quantity: 5,
+    availableCount: 5,
+    totalCount: 5,
     image: coffeeImage,
     type: 'cafe',
     source: 'Sunstream Cafe',
@@ -423,8 +444,8 @@ const EVENT_ITEMS: FoodItem[] = [
     description: 'Assorted snacks and refreshments from the Club Fair',
     locationId: 'lucas-lobby',
     pickupTime: '5:00 PM - 6:00 PM',
-    availableQuantity: 4,
-    quantity: 4,
+    availableCount: 4,
+    totalCount: 4,
     image: snacksImage,
     type: 'event',
     source: 'Lucas Hall Lobby',
@@ -436,8 +457,8 @@ const EVENT_ITEMS: FoodItem[] = [
     description: 'Sandwich platters and refreshments',
     locationId: 'scdi-conference',
     pickupTime: '3:00 PM - 4:00 PM',
-    availableQuantity: 2,
-    quantity: 2,
+    availableCount: 2,
+    totalCount: 2,
     image: platterImage,
     type: 'event',
     source: 'SCDI Conference Room',
@@ -499,48 +520,95 @@ const getFoodImage = (category: string | undefined | null): string => {
 function StudentDashboard() {
   const navigate = useNavigate();
   const theme = useTheme();
+  const { user, logout, validateSession, refreshUserData, getUserInitials } = useAuth();
   const [notificationsAnchor, setNotificationsAnchor] = useState<null | HTMLElement>(null);
   const [loadingStates, setLoadingStates] = useState<{ [key: string]: boolean }>({});
   const [successStates, setSuccessStates] = useState<{ [key: string]: boolean }>({});
   const [foodListings, setFoodListings] = useState<FoodItem[]>([]);
+  const [reservationCounts, setReservationCounts] = useState<{ [key: string]: number }>({});
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [imageErrors, setImageErrors] = useState<{ [key: string]: boolean }>({});
-  const [user, setUser] = useState({
-    fullName: localStorage.getItem('userFullName') || '',
-    notifications: 3,
-  });
-  const [userReservations, setUserReservations] = useState<UserReservation[]>([]);
+  const { userReservations, addReservation, removeReservation } = useReservations();
   const [showEmptyLocations, setShowEmptyLocations] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showErrorToast, setShowErrorToast] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<FoodItem | null>(null);
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Add state for tracking reservation processing
   const [processingReservations, setProcessingReservations] = useState<Set<string>>(new Set());
 
+  // Add state for notifications
+  const [notifications] = useState([
+    { id: 1, message: 'New food available at Benson Center' },
+    { id: 2, message: 'Your reservation is ready for pickup' },
+    { id: 3, message: 'New event leftovers available' }
+  ]);
+
   // Get user initials
-  const userInitials = user.fullName
-    .split(' ')
-    .map(n => n[0])
-    .join('')
-    .toUpperCase();
+  const userInitials = user?.name ? getUserInitials(user.name) : '';
 
   useEffect(() => {
-    // Load food items from localStorage or use mock data
-    const storedItems = localStorage.getItem('foodItems');
-    if (storedItems) {
-      setFoodListings(JSON.parse(storedItems));
-    } else {
-      setFoodListings(ALL_FOOD_ITEMS);
-      localStorage.setItem('foodItems', JSON.stringify(ALL_FOOD_ITEMS));
-    }
+    const checkAuthAndLoadData = async () => {
+      if (!refreshUserData()) {
+        console.log('Failed to refresh user data, redirecting to login');
+        navigate('/student-login');
+        return;
+      }
 
-    // Load user reservations
-    const storedReservations = localStorage.getItem('userReservations');
-    if (storedReservations) {
-      setUserReservations(JSON.parse(storedReservations));
-    }
-  }, []);
+      if (!validateSession()) {
+        console.log('Invalid session, redirecting to login');
+        navigate('/student-login');
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        if (!user) {
+          throw new Error('No user found');
+        }
+
+        // Load food items with proper availableCount
+        const items = getFoodItems().map(item => ({
+          ...item,
+          availableCount: item.totalCount || 5, // Fallback if no backend
+        }));
+        setFoodListings(items);
+
+        // Load user's reservations from localStorage
+        const savedReservations = localStorage.getItem(`userReservations_${user.id}`);
+        const userReservations = savedReservations 
+          ? JSON.parse(savedReservations)
+          : reservationService.getUserReservations(user.id, user.email);
+        
+        console.log('Found reservations:', userReservations.length);
+
+        // Update item availability based on reservations
+        const updatedItems = items.map(item => {
+          const reservedCount = userReservations.filter(
+            (res: { itemDetails?: { id: string } }) => res.itemDetails?.id === item.id
+          ).length;
+          return {
+            ...item,
+            availableCount: Math.max(0, item.totalCount - reservedCount)
+          };
+        });
+
+        setFoodListings(updatedItems);
+      } catch (err) {
+        console.error('Error loading dashboard data:', err);
+        setError('Failed to load dashboard data');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuthAndLoadData();
+  }, [user, navigate, validateSession, refreshUserData]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -564,13 +632,13 @@ function StudentDashboard() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('userFullName');
-    setUser({ fullName: '', notifications: 0 });
-    navigate('/');
+    handleNotificationsClose();
+    logout();
+    navigate('/student-login');
   };
 
-  const isItemReserved = (item: FoodItem) => {
-    return userReservations.some(res => res.foodListingId === item.id);
+  const isItemReserved = (itemId: string) => {
+    return userReservations.some(res => res.foodListingId === itemId);
   };
 
   const hasReservationFromSource = (source: string) => {
@@ -578,102 +646,94 @@ function StudentDashboard() {
   };
 
   const handleReserve = async (id: string) => {
-    // Prevent multiple clicks
     if (processingReservations.has(id)) return;
     
-    // Add to processing set
+    console.log('Starting reservation for item:', id);
+    console.log('Current foodListings:', foodListings);
+    console.log('Current reservation counts:', reservationCounts);
+    
     setProcessingReservations(prev => new Set(prev).add(id));
     setLoadingStates(prev => ({ ...prev, [id]: true }));
     setErrorMessage(null);
 
     try {
-      // First check in foodListings (current state)
-      let selectedItem = foodListings.find(item => item.id === id);
+      const selectedItem = foodListings.find(item => item.id === id);
       
-      // If not found in foodListings, check in ALL_FOOD_ITEMS
       if (!selectedItem) {
-        selectedItem = ALL_FOOD_ITEMS.find(item => item.id === id);
-        
-        if (selectedItem) {
-          logReservationError(
-            `Item found in ALL_FOOD_ITEMS but not in foodListings`,
-            'handleReserve',
-            { id, item: selectedItem }
-          );
-          // Add the item to foodListings
-          setFoodListings(prev => [...prev, selectedItem!]);
-        } else {
-          logReservationError(
-            `Item not found in any food list`,
-            'handleReserve',
-            { 
-              id,
-              foodListingsCount: foodListings.length,
-              allFoodItemsCount: ALL_FOOD_ITEMS.length,
-              foodListingsIds: foodListings.map(item => item.id),
-              allFoodItemsIds: ALL_FOOD_ITEMS.map(item => item.id)
-            }
-          );
-          throw new Error('Item not found. Please try again.');
-        }
+        throw new Error('Item not found. Please try again.');
       }
 
-      // Validate item type
-      if (!selectedItem.type || !['cafe', 'event'].includes(selectedItem.type)) {
-        logReservationError(
-          `Invalid item type`,
-          'handleReserve',
-          { id, type: selectedItem.type }
-        );
-        throw new Error('Invalid item type. Please try again.');
+      console.log('Selected item before reserve:', {
+        id: selectedItem.id,
+        title: selectedItem.title,
+        availableCount: selectedItem.availableCount,
+        totalCount: selectedItem.totalCount,
+        currentReservations: reservationCounts[id] || 0
+      });
+
+      if (!user) {
+        throw new Error('You must be logged in to make a reservation');
       }
 
-      // Check if item is still available
-      if (selectedItem.availableQuantity <= 0) {
+      if (selectedItem.availableCount <= 0) {
         throw new Error('This item is no longer available');
       }
 
-      // Check if user already has a reservation from this source
       if (hasReservationFromSource(selectedItem.source)) {
         throw new Error('You already have a reservation from this location');
       }
 
-      // Update food listings to mark item as claimed
-      const updatedListings = foodListings.map(item => {
-        if (item.id === id) {
-          const newQuantity = item.availableQuantity - 1;
-          return {
-            ...item,
-            availableQuantity: newQuantity,
-            status: newQuantity === 0 ? 'claimed' as const : 'available' as const,
-          };
-        }
-        return item;
-      });
-
-      // Update state and localStorage
-      setFoodListings(updatedListings);
-      localStorage.setItem('foodItems', JSON.stringify(updatedListings));
-
-      // Create new reservation with additional item details
-      const newReservation: UserReservation = {
+      // Create new reservation
+      const newReservation = {
         id: Date.now().toString(),
         foodListingId: id,
         source: selectedItem.source,
         timestamp: Date.now(),
+        userId: user.id,
+        userEmail: user.email,
         itemDetails: {
+          id: selectedItem.id,
           title: selectedItem.title,
           location: selectedItem.source,
           pickupTime: selectedItem.pickupTime,
-          type: selectedItem.type,
-          category: getFoodCategory(selectedItem), // Add category
+          type: selectedItem.type as 'cafe' | 'event',
+          category: getFoodCategory(selectedItem),
         },
       };
 
-      // Update reservations
+      // Add the reservation and persist to localStorage
+      addReservation(newReservation);
       const updatedReservations = [...userReservations, newReservation];
-      setUserReservations(updatedReservations);
-      localStorage.setItem('userReservations', JSON.stringify(updatedReservations));
+      localStorage.setItem(`userReservations_${user.id}`, JSON.stringify(updatedReservations));
+
+      // Update reservation counts
+      setReservationCounts(prev => ({
+        ...prev,
+        [id]: (prev[id] || 0) + 1
+      }));
+
+      // Update food listings to decrease available count
+      setFoodListings(prevItems => {
+        const updatedItems = prevItems.map(item => {
+          if (item.id === id) {
+            const newCount = Math.max(0, item.totalCount - ((reservationCounts[id] || 0) + 1));
+            console.log('Updating item count:', {
+              id: item.id,
+              oldCount: item.availableCount,
+              newCount: newCount,
+              totalCount: item.totalCount,
+              currentReservations: reservationCounts[id] || 0
+            });
+            return {
+              ...item,
+              availableCount: newCount,
+              status: newCount === 0 ? 'claimed' as const : 'available' as const,
+            };
+          }
+          return item;
+        });
+        return updatedItems;
+      });
 
       // Show success state
       setSuccessStates(prev => ({ ...prev, [id]: true }));
@@ -690,11 +750,7 @@ function StudentDashboard() {
         });
       }, 2000);
     } catch (error) {
-      logReservationError(error, 'handleReserve', { 
-        id,
-        errorType: error instanceof Error ? error.name : typeof error,
-        errorMessage: error instanceof Error ? error.message : String(error)
-      });
+      logReservationError(error, 'handleReserve', { id });
       setErrorMessage(error instanceof Error ? error.message : 'Failed to reserve item');
       setShowErrorToast(true);
       setLoadingStates(prev => ({ ...prev, [id]: false }));
@@ -707,68 +763,66 @@ function StudentDashboard() {
   };
 
   const handleCancelReservation = async (id: string) => {
-    // Prevent multiple clicks
     if (processingReservations.has(id)) return;
     
-    // Add to processing set
+    console.log('Starting cancellation for item:', id);
+    console.log('Current foodListings:', foodListings);
+    console.log('Current reservation counts:', reservationCounts);
+    
     setProcessingReservations(prev => new Set(prev).add(id));
     setLoadingStates(prev => ({ ...prev, [id]: true }));
     setErrorMessage(null);
 
     try {
-      // Find the item in the current food listings
       const selectedItem = foodListings.find(item => item.id === id);
       
-      // If item not found, check if it's in ALL_FOOD_ITEMS (for debugging)
       if (!selectedItem) {
-        const allItemsItem = ALL_FOOD_ITEMS.find(item => item.id === id);
-        if (allItemsItem) {
-          logReservationError(
-            `Item found in ALL_FOOD_ITEMS but not in foodListings`,
-            'handleCancelReservation',
-            { id, item: allItemsItem }
-          );
-        } else {
-          logReservationError(
-            `Item not found in any food list`,
-            'handleCancelReservation',
-            { id, foodListings, ALL_FOOD_ITEMS }
-          );
-        }
         throw new Error('Unable to cancel reservation. Please try again.');
       }
 
-      // Validate item type
-      if (!selectedItem.type || !['cafe', 'event'].includes(selectedItem.type)) {
-        logReservationError(
-          `Invalid item type`,
-          'handleCancelReservation',
-          { id, type: selectedItem.type }
-        );
-        throw new Error('Invalid item type. Please try again.');
-      }
-
-      // Update food listings to restore quantity
-      const updatedListings = foodListings.map(item => {
-        if (item.id === id) {
-          const newQuantity = item.availableQuantity + 1;
-          return {
-            ...item,
-            availableQuantity: newQuantity,
-            status: 'available' as const,
-          };
-        }
-        return item;
+      console.log('Selected item before cancel:', {
+        id: selectedItem.id,
+        title: selectedItem.title,
+        availableCount: selectedItem.availableCount,
+        totalCount: selectedItem.totalCount,
+        currentReservations: reservationCounts[id] || 0
       });
 
-      // Update state and localStorage
-      setFoodListings(updatedListings);
-      localStorage.setItem('foodItems', JSON.stringify(updatedListings));
+      // Remove the reservation and update localStorage
+      removeReservation(id);
+      if (user) {
+        const updatedReservations = userReservations.filter(res => res.foodListingId !== id);
+        localStorage.setItem(`userReservations_${user.id}`, JSON.stringify(updatedReservations));
+      }
 
-      // Remove reservation
-      const updatedReservations = userReservations.filter(res => res.foodListingId !== id);
-      setUserReservations(updatedReservations);
-      localStorage.setItem('userReservations', JSON.stringify(updatedReservations));
+      // Update reservation counts
+      setReservationCounts(prev => ({
+        ...prev,
+        [id]: Math.max(0, (prev[id] || 0) - 1)
+      }));
+
+      // Update food listings to increase available count
+      setFoodListings(prevItems => {
+        const updatedItems = prevItems.map(item => {
+          if (item.id === id) {
+            const newCount = Math.min(item.totalCount, item.totalCount - ((reservationCounts[id] || 0) - 1));
+            console.log('Updating item count:', {
+              id: item.id,
+              oldCount: item.availableCount,
+              newCount: newCount,
+              totalCount: item.totalCount,
+              currentReservations: reservationCounts[id] || 0
+            });
+            return {
+              ...item,
+              availableCount: newCount,
+              status: 'available' as const,
+            };
+          }
+          return item;
+        });
+        return updatedItems;
+      });
 
       // Show success state
       setSuccessStates(prev => ({ ...prev, [id]: true }));
@@ -935,6 +989,51 @@ function StudentDashboard() {
     buildingGroups[building].sort((a: Location, b: Location) => a.name.localeCompare(b.name));
   });
 
+  function getFoodItems(): FoodItem[] {
+    return ALL_FOOD_ITEMS;
+  }
+
+  const handleCloseDialog = () => setIsConfirmDialogOpen(false);
+  const handleConfirmReservation = () => {
+    if (!selectedItem || !user) return;
+    
+    const newReservation = {
+      id: Date.now().toString(),
+      foodListingId: selectedItem.id,
+      source: selectedItem.source,
+      timestamp: Date.now(),
+      userId: user.id,
+      userEmail: user.email,
+      itemDetails: {
+        id: selectedItem.id,
+        title: selectedItem.title,
+        location: selectedItem.source,
+        pickupTime: selectedItem.pickupTime,
+        type: selectedItem.type as 'cafe' | 'event',
+        category: getFoodCategory(selectedItem),
+      },
+    };
+
+    addReservation(newReservation);
+    setIsConfirmDialogOpen(false);
+    setShowSuccessToast(true);
+  };
+
+  // Add useEffect to monitor foodListings changes
+  useEffect(() => {
+    console.log('foodListings state updated:', foodListings);
+    // Log the available count for a specific item, e.g., 'event-club-fair-leftovers'
+    const clubFairItem = foodListings.find(item => item.id === 'event-club-fair-leftovers');
+    if (clubFairItem) {
+      console.log(`Club Fair Leftovers available count in state: ${clubFairItem.availableCount}`);
+    }
+  }, [foodListings]);
+
+  // Add useEffect to monitor reservation counts
+  useEffect(() => {
+    console.log('reservationCounts updated:', reservationCounts);
+  }, [reservationCounts]);
+
   return (
     <Box sx={{ flexGrow: 1, bgcolor: '#f5f5f5', minHeight: '100vh' }}>
       {/* Fixed Header */}
@@ -945,6 +1044,10 @@ function StudentDashboard() {
           boxShadow: 2,
           animation: `${fadeIn} 0.5s ease-out`,
           zIndex: theme.zIndex.drawer + 1,
+          width: '100vw',
+          borderRadius: 0,
+          left: 0,
+          right: 0,
         }}
       >
         <Toolbar sx={{ 
@@ -984,7 +1087,7 @@ function StudentDashboard() {
               </Typography>
             </Box>
 
-            <Tooltip title={user.fullName}>
+            <Tooltip title={user?.name || 'User'}>
               <Avatar
                 sx={{
                   bgcolor: BRAND_GREEN,
@@ -1041,9 +1144,20 @@ function StudentDashboard() {
                     transform: 'scale(1.1)',
                   },
                   transition: 'all 0.2s ease-in-out',
+                  position: 'relative',
                 }}
               >
-                <Badge badgeContent={user.notifications} color="error">
+                <Badge 
+                  badgeContent={notifications.length} 
+                  color="error"
+                  sx={{
+                    '& .MuiBadge-badge': {
+                      backgroundColor: '#fff',
+                      color: SCU_RED,
+                      fontWeight: 'bold',
+                    }
+                  }}
+                >
                   <NotificationsIcon />
                 </Badge>
               </IconButton>
@@ -1109,8 +1223,8 @@ function StudentDashboard() {
                         const timeRemaining = getTimeRemaining(item.pickupTime);
                         const foodTypeAsset = imageErrors[item.id] ? foodTypeAssets.default : getFoodTypeAsset(item);
                         const isUrgent = timeRemaining?.includes('⚠️');
-                        const isAvailable = item.availableQuantity > 0;
-                        const isReserved = isItemReserved(item);
+                        const isItemAvailable = item.availableCount > 0;
+                        const isReserved = isItemReserved(item.id);
                         const hasReservedFromSource = hasReservationFromSource(item.source);
 
                         return (
@@ -1197,11 +1311,11 @@ function StudentDashboard() {
                                         />
                                       )}
                                       <Chip
-                                        label={item.availableQuantity > 0 ? `${item.availableQuantity} left` : 'Sold Out'}
+                                        label={item.availableCount > 0 ? `${item.availableCount} left` : 'Sold Out'}
                                         size="small"
                                         sx={{
-                                          bgcolor: item.availableQuantity > 0 ? alpha(SCU_RED, 0.1) : '#e0e0e0',
-                                          color: item.availableQuantity > 0 ? SCU_RED : '#757575',
+                                          bgcolor: item.availableCount > 0 ? alpha(SCU_RED, 0.1) : '#e0e0e0',
+                                          color: item.availableCount > 0 ? SCU_RED : '#757575',
                                           fontWeight: 500,
                                           animation: loadingStates[item.id] ? `${pulse} 0.5s ease-in-out` : 'none',
                                         }}
@@ -1227,29 +1341,35 @@ function StudentDashboard() {
                                 <Button
                                   variant="contained"
                                   fullWidth
-                                  disabled={!isAvailable || loadingStates[item.id] || (hasReservedFromSource && !isReserved)}
-                                  onClick={() => isReserved ? handleCancelReservation(item.id) : handleReserve(item.id)}
+                                  disabled={!isItemAvailable || loadingStates[item.id] || isItemReserved(item.id)}
+                                  onClick={() => handleReserve(item.id)}
                                   sx={{
-                                    bgcolor: isReserved 
-                                      ? alpha(SCU_RED, 0.8)
-                                      : isAvailable 
+                                    bgcolor: isItemReserved(item.id)
+                                      ? '#e0e0e0'
+                                      : isItemAvailable 
                                         ? BRAND_GREEN 
                                         : '#e0e0e0',
-                                    color: 'white',
+                                    color: isItemReserved(item.id)
+                                      ? '#757575'
+                                      : 'white',
                                     py: 1.5,
                                     px: 2,
                                     fontSize: '0.875rem',
                                     fontWeight: 600,
                                     '&:hover': {
-                                      bgcolor: isReserved
-                                        ? alpha(SCU_RED, 0.9)
-                                        : isAvailable
+                                      bgcolor: isItemReserved(item.id)
+                                        ? '#e0e0e0'
+                                        : isItemAvailable
                                           ? '#4a8a4a'
                                           : '#e0e0e0',
                                     },
                                     '&:disabled': {
-                                      bgcolor: alpha(SCU_RED, 0.3),
-                                      color: 'white',
+                                      bgcolor: isItemReserved(item.id)
+                                        ? '#e0e0e0'
+                                        : alpha(SCU_RED, 0.3),
+                                      color: isItemReserved(item.id)
+                                        ? '#757575'
+                                        : 'white',
                                     },
                                     transition: 'all 0.3s ease-in-out',
                                     position: 'relative',
@@ -1278,11 +1398,13 @@ function StudentDashboard() {
                                         fontSize: 20,
                                       }}
                                     />
-                                  ) : isReserved ? (
-                                    'Cancel Reservation'
-                                  ) : hasReservedFromSource ? (
-                                    'Already Reserved'
-                                  ) : isAvailable ? (
+                                  ) : isItemReserved(item.id) ? (
+                                    <Tooltip title="You have already reserved this item">
+                                      <span>
+                                        Already Reserved
+                                      </span>
+                                    </Tooltip>
+                                  ) : isItemAvailable ? (
                                     'Reserve Now'
                                   ) : (
                                     'Sold Out'
@@ -1363,8 +1485,8 @@ function StudentDashboard() {
                             const timeRemaining = getTimeRemaining(item.pickupTime);
                             const foodTypeAsset = imageErrors[item.id] ? foodTypeAssets.default : getFoodTypeAsset(item);
                             const isUrgent = timeRemaining?.includes('⚠️');
-                            const isAvailable = item.availableQuantity > 0;
-                            const isReserved = isItemReserved(item);
+                            const isItemAvailable = item.availableCount > 0;
+                            const isReserved = isItemReserved(item.id);
                             const hasReservedFromSource = hasReservationFromSource(item.source);
 
                             return (
@@ -1451,11 +1573,11 @@ function StudentDashboard() {
                                             />
                                           )}
                                           <Chip
-                                            label={item.availableQuantity > 0 ? `${item.availableQuantity} left` : 'Sold Out'}
+                                            label={item.availableCount > 0 ? `${item.availableCount} left` : 'Sold Out'}
                                             size="small"
                                             sx={{
-                                              bgcolor: item.availableQuantity > 0 ? alpha(SCU_RED, 0.1) : '#e0e0e0',
-                                              color: item.availableQuantity > 0 ? SCU_RED : '#757575',
+                                              bgcolor: item.availableCount > 0 ? alpha(SCU_RED, 0.1) : '#e0e0e0',
+                                              color: item.availableCount > 0 ? SCU_RED : '#757575',
                                               fontWeight: 500,
                                               animation: loadingStates[item.id] ? `${pulse} 0.5s ease-in-out` : 'none',
                                             }}
@@ -1481,29 +1603,35 @@ function StudentDashboard() {
                                     <Button
                                       variant="contained"
                                       fullWidth
-                                      disabled={!isAvailable || loadingStates[item.id] || (hasReservedFromSource && !isReserved)}
-                                      onClick={() => isReserved ? handleCancelReservation(item.id) : handleReserve(item.id)}
+                                      disabled={!isItemAvailable || loadingStates[item.id] || isItemReserved(item.id)}
+                                      onClick={() => handleReserve(item.id)}
                                       sx={{
-                                        bgcolor: isReserved 
-                                          ? alpha(SCU_RED, 0.8)
-                                          : isAvailable 
+                                        bgcolor: isItemReserved(item.id)
+                                          ? '#e0e0e0'
+                                          : isItemAvailable 
                                             ? BRAND_GREEN 
                                             : '#e0e0e0',
-                                        color: 'white',
+                                        color: isItemReserved(item.id)
+                                          ? '#757575'
+                                          : 'white',
                                         py: 1.5,
                                         px: 2,
                                         fontSize: '0.875rem',
                                         fontWeight: 600,
                                         '&:hover': {
-                                          bgcolor: isReserved
-                                            ? alpha(SCU_RED, 0.9)
-                                            : isAvailable
+                                          bgcolor: isItemReserved(item.id)
+                                            ? '#e0e0e0'
+                                            : isItemAvailable
                                               ? '#4a8a4a'
                                               : '#e0e0e0',
                                         },
                                         '&:disabled': {
-                                          bgcolor: alpha(SCU_RED, 0.3),
-                                          color: 'white',
+                                          bgcolor: isItemReserved(item.id)
+                                            ? '#e0e0e0'
+                                            : alpha(SCU_RED, 0.3),
+                                          color: isItemReserved(item.id)
+                                            ? '#757575'
+                                            : 'white',
                                         },
                                         transition: 'all 0.3s ease-in-out',
                                         position: 'relative',
@@ -1532,11 +1660,13 @@ function StudentDashboard() {
                                             fontSize: 20,
                                           }}
                                         />
-                                      ) : isReserved ? (
-                                        'Cancel Reservation'
-                                      ) : hasReservedFromSource ? (
-                                        'Already Reserved'
-                                      ) : isAvailable ? (
+                                      ) : isItemReserved(item.id) ? (
+                                        <Tooltip title="You have already reserved this item">
+                                          <span>
+                                            Already Reserved
+                                          </span>
+                                        </Tooltip>
+                                      ) : isItemAvailable ? (
                                         'Reserve Now'
                                       ) : (
                                         'Sold Out'
@@ -1697,6 +1827,27 @@ function StudentDashboard() {
           </Typography>
         </MenuItem>
       </Menu>
+
+      {/* Confirmation Dialog */}
+      <Dialog
+        open={isConfirmDialogOpen}
+        onClose={handleCloseDialog}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+      >
+        <DialogTitle id="alert-dialog-title">{"Confirm Reservation"}</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description">
+            Are you sure you want to reserve this item?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog}>Cancel</Button>
+          <Button onClick={handleConfirmReservation} autoFocus>
+            Confirm
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

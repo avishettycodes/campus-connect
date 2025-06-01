@@ -1,3 +1,14 @@
+/**
+ * YourReservations.tsx
+ * Displays and manages user's food reservations
+ * 
+ * Changes made:
+ * - Integrated with ReservationService
+ * - Improved error handling
+ * - Enhanced user session validation
+ * - Added proper state management
+ */
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -17,6 +28,9 @@ import {
   DialogContent,
   DialogActions,
   DialogContentText,
+  Alert,
+  Snackbar,
+  CircularProgress,
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -26,26 +40,29 @@ import {
   Cancel as CancelIcon,
   Dashboard as DashboardIcon,
 } from '@mui/icons-material';
+import { useAuth } from '../contexts/AuthContext';
+import { reservationService, type Reservation } from '../services/ReservationService';
+import { useReservations } from '../contexts/ReservationContext';
 
-// Import food images
-import pastriesImage from '../assets/food/pastries.jpg';
-import pizzaImage from '../assets/food/pizza.jpg';
-import sandwichImage from '../assets/food/chicken_sandwich.jpg';
-import wrapImage from '../assets/food/vegan_wrap.jpg';
-import coffeeImage from '../assets/food/coffee.jpg';
-import burritoImage from '../assets/food/breakfast_burrito.jpg';
-import smoothieImage from '../assets/food/smoothie_bowl.jpg';
-import bagelImage from '../assets/food/bagels.jpg';
-import platterImage from '../assets/food/sandwich_platter.jpg';
-import snacksImage from '../assets/food/snacks.jpg';
-import popcornImage from '../assets/food/popcorn_drinks.jpg';
-import defaultFoodImage from '../assets/food/default_food.jpg';
+// Comment out or remove these imports:
+// import pizzaImage from '../assets/pizza.jpg';
+// import sandwichImage from '../assets/sandwich.jpg';
+// import wrapImage from '../assets/wrap.jpg';
+// import coffeeImage from '../assets/coffee.jpg';
+// import burritoImage from '../assets/burrito.jpg';
+// import smoothieImage from '../assets/smoothie.jpg';
+// import bagelImage from '../assets/bagel.jpg';
+// import platterImage from '../assets/platter.jpg';
+// import snacksImage from '../assets/snacks.jpg';
+// import popcornImage from '../assets/popcorn.jpg';
+// import pastriesImage from '../assets/pastries.jpg';
 
-// Animation keyframes
+// Constants
+const SCU_RED = '#990000';
 const fadeIn = keyframes`
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(20px);
   }
   to {
     opacity: 1;
@@ -53,22 +70,9 @@ const fadeIn = keyframes`
   }
 `;
 
-const SCU_RED = '#990000';
-
 // Food type assets mapping
 const foodTypeAssets = {
-  pastries: { image: pastriesImage, alt: 'Fresh assorted pastries' },
-  pizza: { image: pizzaImage, alt: 'Pepperoni pizza slices' },
-  sandwich: { image: sandwichImage, alt: 'Grilled chicken sandwich' },
-  wrap: { image: wrapImage, alt: 'Fresh vegan wraps' },
-  coffee: { image: coffeeImage, alt: 'Freshly brewed coffee' },
-  burrito: { image: burritoImage, alt: 'Breakfast burrito' },
-  smoothie: { image: smoothieImage, alt: 'Smoothie bowl' },
-  bagel: { image: bagelImage, alt: 'Fresh assorted bagels' },
-  platter: { image: platterImage, alt: 'Sandwich platter' },
-  snacks: { image: snacksImage, alt: 'Assorted healthy snacks' },
-  popcorn: { image: popcornImage, alt: 'Fresh popcorn and drinks' },
-  default: { image: defaultFoodImage, alt: 'Food item' },
+  default: { image: '', alt: 'Food item' },
 };
 
 // Add type for food category
@@ -76,33 +80,93 @@ type FoodCategory = 'pizza' | 'sandwich' | 'wrap' | 'coffee' | 'burrito' | 'smoo
 
 function YourReservations() {
   const navigate = useNavigate();
-  const [reservations, setReservations] = useState<any[]>([]);
+  const { user, validateSession, refreshUserData } = useAuth();
+  const { userReservations, removeReservation } = useReservations();
   const [selectedReservation, setSelectedReservation] = useState<string | null>(null);
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    // Get reservations from localStorage
-    const storedReservations = localStorage.getItem('userReservations');
-    if (storedReservations) {
-      setReservations(JSON.parse(storedReservations));
-    }
-  }, []);
+    const checkAuthAndLoadReservations = async () => {
+      // First try to refresh user data
+      if (!refreshUserData()) {
+        console.log('Failed to refresh user data, redirecting to login');
+        navigate('/student-login');
+        return;
+      }
+
+      // Then validate the session
+      if (!validateSession()) {
+        console.log('Invalid session, redirecting to login');
+        navigate('/student-login');
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        if (!user) {
+          throw new Error('No user found');
+        }
+        setIsLoading(false);
+      } catch (err) {
+        console.error('Error loading reservations:', err);
+        setError('Failed to load reservations');
+        setIsLoading(false);
+      }
+    };
+
+    checkAuthAndLoadReservations();
+  }, [user, navigate, validateSession, refreshUserData]);
 
   const handleBack = () => {
-    navigate('/welcome');
+    navigate('/student');
   };
 
   const handleCancelClick = (id: string) => {
+    if (!user) {
+      console.log('No user found when trying to cancel reservation');
+      setError('You must be logged in to cancel reservations');
+      return;
+    }
+
+    const reservation = userReservations.find(res => res.id === id);
+    if (!reservation) {
+      console.log('Reservation not found:', id);
+      setError('Reservation not found');
+      return;
+    }
+
+    if (reservation.userEmail !== user.email || reservation.userId !== user.id) {
+      console.log('Unauthorized cancellation attempt:', {
+        reservationUser: reservation.userEmail,
+        currentUser: user.email,
+      });
+      setError('You do not have permission to cancel this reservation');
+      return;
+    }
+
     setSelectedReservation(id);
     setIsConfirmDialogOpen(true);
   };
 
   const handleConfirmCancel = () => {
-    if (selectedReservation) {
-      // Remove reservation from localStorage
-      const updatedReservations = reservations.filter(res => res.id !== selectedReservation);
-      localStorage.setItem('userReservations', JSON.stringify(updatedReservations));
-      setReservations(updatedReservations);
+    if (!selectedReservation || !user) {
+      console.log('Invalid cancellation attempt - no reservation or user');
+      return;
+    }
+
+    try {
+      console.log('Cancelling reservation:', selectedReservation);
+      
+      // Remove the reservation
+      removeReservation(selectedReservation);
+      setSuccessMessage('Reservation cancelled successfully');
+    } catch (err) {
+      console.error('Error cancelling reservation:', err);
+      setError('Failed to cancel reservation');
+    } finally {
       setIsConfirmDialogOpen(false);
       setSelectedReservation(null);
     }
@@ -113,27 +177,16 @@ function YourReservations() {
     setSelectedReservation(null);
   };
 
-  // Update getFoodImage function with proper type checking
-  const getFoodImage = (title: string | undefined | null) => {
-    if (!title || typeof title !== 'string') {
-      return foodTypeAssets.default;
-    }
-
-    const titleLower = title.toLowerCase().trim();
-    
-    if (titleLower.includes('pastry') || titleLower.includes('croissant')) return foodTypeAssets.pastries;
-    if (titleLower.includes('pizza')) return foodTypeAssets.pizza;
-    if (titleLower.includes('sandwich')) return foodTypeAssets.sandwich;
-    if (titleLower.includes('wrap') || titleLower.includes('vegan')) return foodTypeAssets.wrap;
-    if (titleLower.includes('coffee')) return foodTypeAssets.coffee;
-    if (titleLower.includes('burrito')) return foodTypeAssets.burrito;
-    if (titleLower.includes('smoothie')) return foodTypeAssets.smoothie;
-    if (titleLower.includes('bagel')) return foodTypeAssets.bagel;
-    if (titleLower.includes('platter')) return foodTypeAssets.platter;
-    if (titleLower.includes('snack')) return foodTypeAssets.snacks;
-    if (titleLower.includes('popcorn')) return foodTypeAssets.popcorn;
-    return foodTypeAssets.default;
+  const handleCloseError = () => {
+    setError(null);
   };
+
+  const handleCloseSuccess = () => {
+    setSuccessMessage(null);
+  };
+
+  // Update getFoodImage function with proper type checking
+  const getFoodImage = () => foodTypeAssets.default;
 
   return (
     <Box sx={{ flexGrow: 1, bgcolor: '#f5f5f5', minHeight: '100vh' }}>
@@ -197,7 +250,11 @@ function YourReservations() {
           Your Reservations
         </Typography>
 
-        {reservations.length === 0 ? (
+        {isLoading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+            <CircularProgress />
+          </Box>
+        ) : userReservations.length === 0 ? (
           <Box
             sx={{
               textAlign: 'center',
@@ -242,8 +299,8 @@ function YourReservations() {
           </Box>
         ) : (
           <Grid container spacing={3}>
-            {reservations.map((reservation) => {
-              const foodImage = getFoodImage(reservation.itemDetails?.title || reservation.title);
+            {userReservations.map((reservation) => {
+              const foodImage = getFoodImage();
               return (
                 <Grid item xs={12} key={reservation.id}>
                   <Card
@@ -260,23 +317,9 @@ function YourReservations() {
                       borderRadius: 2,
                     }}
                   >
-                    <CardMedia
-                      component="img"
-                      image={foodImage.image}
-                      alt={foodImage.alt}
-                      sx={{
-                        width: { xs: '100%', sm: 200 },
-                        height: { xs: 160, sm: 'auto' },
-                        objectFit: 'cover',
-                        borderTopLeftRadius: { xs: '8px', sm: '8px' },
-                        borderTopRightRadius: { xs: '8px', sm: 0 },
-                        borderBottomLeftRadius: { xs: 0, sm: '8px' },
-                      }}
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = defaultFoodImage;
-                      }}
-                    />
+                    <Box sx={{ width: 120, height: 120, bgcolor: '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 2 }}>
+                      <RestaurantIcon sx={{ fontSize: 48, color: '#ccc' }} />
+                    </Box>
                     <CardContent
                       sx={{
                         flex: 1,
@@ -288,19 +331,19 @@ function YourReservations() {
                     >
                       <Box>
                         <Typography variant="h6" sx={{ color: SCU_RED, fontWeight: 600, mb: 1 }}>
-                          {reservation.title}
+                          {reservation.itemDetails?.title}
                         </Typography>
                         <Stack spacing={1}>
                           <Box sx={{ display: 'flex', alignItems: 'center' }}>
                             <LocationOnIcon sx={{ fontSize: 16, color: SCU_RED, mr: 0.5 }} />
                             <Typography variant="body2" color="text.secondary">
-                              {reservation.location}
+                              {reservation.itemDetails?.location}
                             </Typography>
                           </Box>
                           <Box sx={{ display: 'flex', alignItems: 'center' }}>
                             <AccessTimeIcon sx={{ fontSize: 16, color: SCU_RED, mr: 0.5 }} />
                             <Typography variant="body2" color="text.secondary">
-                              Pickup: {reservation.pickupTime}
+                              Pickup: {reservation.itemDetails?.pickupTime}
                             </Typography>
                           </Box>
                         </Stack>
@@ -347,12 +390,12 @@ function YourReservations() {
         </DialogTitle>
         <DialogContent>
           <DialogContentText id="cancel-dialog-description">
-            Are you sure you want to cancel this reservation?
+            Are you sure you want to cancel this reservation? This action cannot be undone.
           </DialogContentText>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={handleCloseDialog} color="inherit">
-            Cancel
+            Keep Reservation
           </Button>
           <Button
             onClick={handleConfirmCancel}
@@ -369,6 +412,30 @@ function YourReservations() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Error Snackbar */}
+      <Snackbar
+        open={!!error}
+        autoHideDuration={6000}
+        onClose={handleCloseError}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert onClose={handleCloseError} severity="error" sx={{ width: '100%' }}>
+          {error}
+        </Alert>
+      </Snackbar>
+
+      {/* Success Snackbar */}
+      <Snackbar
+        open={!!successMessage}
+        autoHideDuration={3000}
+        onClose={handleCloseSuccess}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert onClose={handleCloseSuccess} severity="success" sx={{ width: '100%' }}>
+          {successMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import { useState, useContext, useEffect, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -19,6 +19,7 @@ import {
 import LocalDiningIcon from '@mui/icons-material/LocalDining';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { SelectedSchoolContext } from '../App';
+import { useAuth } from '../contexts/AuthContext';
 
 // Animation keyframes
 const fadeOut = keyframes`
@@ -182,6 +183,7 @@ const schools = [
 function StudentLogin() {
   const navigate = useNavigate();
   const { setSelectedSchool } = useContext(SelectedSchoolContext);
+  const { login, clearAllUserData, getUserInitials } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     name: '',
@@ -196,6 +198,11 @@ function StudentLogin() {
     name: false,
     password: false,
   });
+
+  // Clear any existing user data on component mount
+  useEffect(() => {
+    clearAllUserData();
+  }, [clearAllUserData]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, checked } = e.target;
@@ -235,21 +242,45 @@ function StudentLogin() {
     return !Object.values(newErrors).some(error => error);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (validateForm()) {
-      setIsLoading(true);
-      // Store selected school in localStorage and context for theme switching
-      localStorage.setItem('selectedSchool', formData.school);
+    if (!validateForm()) return;
+
+    setIsLoading(true);
+    try {
+      // Clear any existing user data before login
+      clearAllUserData();
+      
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Generate user metadata
+      const userMetadata = {
+        email: formData.email,
+        name: formData.name,
+        school: formData.school,
+        initials: getUserInitials(formData.name),
+        id: `user_${formData.email.split('@')[0]}_${Date.now()}`,
+        lastLogin: Date.now()
+      };
+      
+      // Login user with metadata
+      login(userMetadata);
+      
+      // Set school context
       setSelectedSchool(formData.school);
       
-      // Store user's full name in localStorage
-      localStorage.setItem('userFullName', formData.name);
-      
-      // Simulate loading and animate transition
-      setTimeout(() => {
-        navigate('/welcome');
-      }, 1500);
+      // Navigate to student dashboard
+      navigate('/student');
+    } catch (error) {
+      console.error('Login failed:', error);
+      setErrors(prev => ({
+        ...prev,
+        email: true,
+        password: true
+      }));
+    } finally {
+      setIsLoading(false);
     }
   };
 

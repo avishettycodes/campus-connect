@@ -25,6 +25,7 @@ function Welcome() {
         justifyContent: 'center',
         p: 3,
         animation: 'fadeIn 0.5s ease-in',
+        bgcolor: 'background.default',
       }}
     >
       <Paper

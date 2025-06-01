@@ -2,6 +2,8 @@ import React, { useState, createContext } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { createTheme, ThemeProvider, CssBaseline } from '@mui/material';
 import defaultTheme from './theme';
+import { AuthProvider } from './contexts/AuthContext';
+import { ReservationProvider } from './contexts/ReservationContext';
 import Home from './pages/Home';
 import StudentDashboard from './pages/StudentDashboard';
 import AdminDashboard from './pages/AdminDashboard';
@@ -56,30 +58,34 @@ const App: React.FC = () => {
 
   return (
     <SelectedSchoolContext.Provider value={{ selectedSchool, setSelectedSchool }}>
-      <ThemeProvider theme={defaultTheme}>
-        <CssBaseline />
-        <Router>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/student-login" element={<StudentLogin />} />
-            <Route path="/welcome" element={<Welcome />} />
-            <Route path="/student" element={
-              selectedSchool === 'Santa Clara University' ? (
-                <ThemeProvider theme={scuTheme}>
-                  <StudentDashboard />
-                </ThemeProvider>
-              ) : (
-                <StudentDashboard />
-              )
-            } />
-            <Route path="/admin-login" element={<AdminLogin />} />
-            <Route path="/admin-dashboard" element={<AdminDashboard />} />
-            <Route path="/reservations" element={<ReservationSummary />} />
-            <Route path="/events" element={<Events />} />
-            <Route path="/your-reservations" element={<YourReservations />} />
-          </Routes>
-        </Router>
-      </ThemeProvider>
+      <AuthProvider>
+        <ReservationProvider>
+          <ThemeProvider theme={defaultTheme}>
+            <CssBaseline />
+            <Router>
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/student-login" element={<StudentLogin />} />
+                <Route path="/welcome" element={<Welcome />} />
+                <Route path="/student" element={
+                  selectedSchool === 'Santa Clara University' ? (
+                    <ThemeProvider theme={scuTheme}>
+                      <StudentDashboard />
+                    </ThemeProvider>
+                  ) : (
+                    <StudentDashboard />
+                  )
+                } />
+                <Route path="/admin-login" element={<AdminLogin />} />
+                <Route path="/admin-dashboard" element={<AdminDashboard />} />
+                <Route path="/reservations" element={<ReservationSummary />} />
+                <Route path="/events" element={<Events />} />
+                <Route path="/your-reservations" element={<YourReservations />} />
+              </Routes>
+            </Router>
+          </ThemeProvider>
+        </ReservationProvider>
+      </AuthProvider>
     </SelectedSchoolContext.Provider>
   );
 };

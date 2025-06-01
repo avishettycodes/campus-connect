@@ -13,7 +13,7 @@ const theme = createTheme({
       dark: '#5F4339',
     },
     background: {
-      default: '#F5F5DC', // Beige/tan background
+      default: '#f9f8e8', // Pale yellow background
       paper: '#FFFFFF',
     },
   },
