@@ -716,8 +716,8 @@ function StudentDashboard() {
       setFoodListings(prevItems => {
         const updatedItems = prevItems.map(item => {
           if (item.id === id) {
-            const newCount = Math.max(0, item.totalCount - ((reservationCounts[id] || 0) + 1));
-            console.log('Updating item count:', {
+            const newCount = Math.max(0, item.availableCount - 1);
+            console.log('Updating item count after reserve:', {
               id: item.id,
               oldCount: item.availableCount,
               newCount: newCount,
@@ -732,7 +732,7 @@ function StudentDashboard() {
           }
           return item;
         });
-        return updatedItems;
+        return [...updatedItems];
       });
 
       // Show success state
@@ -805,8 +805,8 @@ function StudentDashboard() {
       setFoodListings(prevItems => {
         const updatedItems = prevItems.map(item => {
           if (item.id === id) {
-            const newCount = Math.min(item.totalCount, item.totalCount - ((reservationCounts[id] || 0) - 1));
-            console.log('Updating item count:', {
+            const newCount = Math.min(item.totalCount, item.availableCount + 1);
+            console.log('Updating item count after cancel:', {
               id: item.id,
               oldCount: item.availableCount,
               newCount: newCount,
@@ -821,7 +821,7 @@ function StudentDashboard() {
           }
           return item;
         });
-        return updatedItems;
+        return [...updatedItems];
       });
 
       // Show success state
